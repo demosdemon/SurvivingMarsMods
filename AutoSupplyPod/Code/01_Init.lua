@@ -87,6 +87,7 @@ function GetResourceDemand(options)
         end
     end
     
+    Log("End GetResourceDemand")
     return result
 end
 
