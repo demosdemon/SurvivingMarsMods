@@ -25,6 +25,7 @@ local storable_resources = {
 
 local mod_Debug = true
 local mod_Enabled = false
+local mod_SkipDayOne = false
 local mod_MaxPodAmount = false
 local mod_SupplyPodThread = false
 local mod_options = {}
@@ -37,15 +38,17 @@ end
 
 local function ModOptions()
     options = CurrentModOptions
+    mod_Debug = options:GetProperty("Debug")
     mod_Enabled = options:GetProperty("Enabled")
+    mod_SkipDayOne = options:GetProperty("SkipDayOne")
     mod_SupplyPodCargoLimit = options:GetProperty("MaxPodAmount")
     
     for i = 1, #storable_resources do
         local id = storable_resources[i]
         mod_options[id] = {
-            enabled = options:GetProperty(id .. "_Enable"),
-            threshold = options:GetProperty(id .. "_Threshold"),
-            refil = options:GetProperty(id .. "_Refil"),
+            enabled = options:GetProperty(id .. "Enable"),
+            threshold = options:GetProperty(id .. "Threshold"),
+            refil = options:GetProperty(id .. "Refil"),
         }
     end
 end
@@ -135,8 +138,13 @@ function SupplyPodRefil(options)
 
 end
 
-function OnMsg.NewDay()
+function OnMsg.NewDay(day)
     if not mod_Enabled then
+        return
+    end
+
+    if day == 1 and mod_SkipDayOne then
+        Log("Skipping resupply on first day.")
         return
     end
 
