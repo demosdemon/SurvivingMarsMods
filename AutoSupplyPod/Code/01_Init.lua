@@ -2,11 +2,11 @@ function SpawnSupplyPodInOrbit(cargo)
     local sponsor = GetMissionSponsor()
     local class = sponsor.pod_class
     local pod = PlaceBuilding(class, {city = UICity})
-    
+
     pod.cargo = cargo
     pod.name = GenerateRocketName()
     pod:SetCommand("WaitInOrbit")
-    
+
     return pod
 end
 
@@ -42,7 +42,7 @@ local function ModOptions()
     mod_Enabled = options:GetProperty("Enabled")
     mod_SkipDayOne = options:GetProperty("SkipDayOne")
     mod_SupplyPodCargoLimit = options:GetProperty("MaxPodAmount")
-    
+
     for i = 1, #storable_resources do
         local id = storable_resources[i]
         mod_options[id] = {
@@ -65,7 +65,7 @@ function OnMsg.ApplyModOptions(id)
         Log("id <> CurrentModId")
         return
     end
-    
+
     ModOptions()
     Log("End ApplyModOptions")
 end
@@ -75,9 +75,9 @@ function GetResourceDemand(options)
     options = options or mod_options
     colony_supplies = {}
     GatherResourceOverviewData(colony_supplies)
-    
+
     local result = {}
-    
+
     for i = 1, #storable_resources do
         local id = storable_resources[i]
         local opts = options[id]
@@ -89,7 +89,7 @@ function GetResourceDemand(options)
             end
         end
     end
-    
+
     Log("End GetResourceDemand")
     return result
 end
@@ -99,10 +99,10 @@ function SupplyPodRefil(options)
         Log("SupplyPodThread already in progress")
         return
     end
-    
+
     mod_SupplyPodThread = CreateGameTimeThread(function(options)
         local demand = GetResourceDemand(options)
-        
+
         local cargo = {}
         local cargo_amt = 0
         local reload = function()
@@ -112,7 +112,7 @@ function SupplyPodRefil(options)
             cargo = {}
             cargo_amt = 0
         end
-        
+
         for idx = 1, #demand do
             local item = demand[idx]
             while item.amount > 0 do
@@ -128,20 +128,18 @@ function SupplyPodRefil(options)
                 end
             end
         end
-        
+
         if #cargo > 0 then
             reload()
         end
-        
+
         mod_SupplyPodThread = false
     end, options or mod_options)
 
 end
 
 function OnMsg.NewDay(day)
-    if not mod_Enabled then
-        return
-    end
+    if not mod_Enabled then return end
 
     if day == 1 and mod_SkipDayOne then
         Log("Skipping resupply on first day.")
