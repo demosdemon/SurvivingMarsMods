@@ -41,7 +41,7 @@ local function ModOptions()
     mod_Debug = options:GetProperty("Debug")
     mod_Enabled = options:GetProperty("Enabled")
     mod_SkipDayOne = options:GetProperty("SkipDayOne")
-    mod_SupplyPodCargoLimit = options:GetProperty("MaxPodAmount")
+    mod_MaxPodAmount = options:GetProperty("MaxPodAmount")
 
     for i = 1, #storable_resources do
         local id = storable_resources[i]
@@ -129,6 +129,11 @@ function SupplyPodRefil(options)
     mod_SupplyPodThread = false
 end
 
+local function IsRunningThread(thread)
+    local status = GetThreadStatus(thread)
+    return thread and status and status ~= "done"
+end
+
 function OnMsg.NewDay(day)
     if not mod_Enabled then return end
 
@@ -137,7 +142,7 @@ function OnMsg.NewDay(day)
         return
     end
 
-    if mod_SupplyPodThread then
+    if IsRunningThread(mod_SupplyPodThread) then
         Log("SupplyPodThread already in progress.")
         return
     end
