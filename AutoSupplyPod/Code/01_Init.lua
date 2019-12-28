@@ -82,9 +82,9 @@ function GetResourceDemand(options)
         local id = storable_resources[i]
         local opts = options[id]
         if opts and opts.enabled then
-            local supply = colony_supplies[id] or 0
+            local supply = (colony_supplies[id] or 0) / const.ResourceScale
             Log("Resource: " .. id .. ", Supply: " .. supply .. ", Threshold: " .. opts.threshold .. ", Refil: " .. opts.refil)
-            if supply <= (opts.threshold * const.ResourceScale) then
+            if supply <= opts.threshold then
                 result[#result + 1] = {class = id, amount = opts.refil}
             end
         end
@@ -95,47 +95,38 @@ function GetResourceDemand(options)
 end
 
 function SupplyPodRefil(options)
-    if mod_SupplyPodThread then
-        Log("SupplyPodThread already in progress")
-        return
+    local demand = GetResourceDemand(options)
+
+    local cargo = {}
+    local cargo_amt = 0
+    local reload = function()
+        -- TODO: Dispatch Notification
+        SpawnSupplyPodInOrbit(cargo)
+        cargo = {}
+        cargo_amt = 0
     end
 
-    mod_SupplyPodThread = CreateGameTimeThread(function(options)
-        local demand = GetResourceDemand(options)
-
-        local cargo = {}
-        local cargo_amt = 0
-        local reload = function()
-            Sleep(5000)
-            -- TODO: Dispatch Notification
-            SpawnSupplyPodInOrbit(cargo)
-            cargo = {}
-            cargo_amt = 0
-        end
-
-        for idx = 1, #demand do
-            local item = demand[idx]
-            while item.amount > 0 do
-                if (cargo_amt + item.amount) > mod_MaxPodAmount then
-                    local amt = mod_MaxPodAmount - cargo_amt
-                    item.amount = item.amount - amt
-                    cargo[#cargo + 1] = {class = item.class, amount = amt}
-                    reload()
-                else
-                    cargo_amt = cargo_amt + item.amount
-                    cargo[#cargo + 1] = {class = item.class, amount = item.amount}
-                    item.amount = 0
-                end
+    for idx = 1, #demand do
+        local item = demand[idx]
+        while item.amount > 0 do
+            if (cargo_amt + item.amount) > mod_MaxPodAmount then
+                local amt = mod_MaxPodAmount - cargo_amt
+                item.amount = item.amount - amt
+                cargo[#cargo + 1] = {class = item.class, amount = amt}
+                reload()
+            else
+                cargo_amt = cargo_amt + item.amount
+                cargo[#cargo + 1] = {class = item.class, amount = item.amount}
+                item.amount = 0
             end
         end
+    end
 
-        if #cargo > 0 then
-            reload()
-        end
+    if #cargo > 0 then
+        reload()
+    end
 
-        mod_SupplyPodThread = false
-    end, options or mod_options)
-
+    mod_SupplyPodThread = false
 end
 
 function OnMsg.NewDay(day)
@@ -146,5 +137,10 @@ function OnMsg.NewDay(day)
         return
     end
 
-    SupplyPodRefil()
+    if mod_SupplyPodThread then
+        Log("SupplyPodThread already in progress.")
+        return
+    end
+
+    mod_SupplyPodThread = CreateGameTimeThread(SupplyPodRefil, mod_options)
 end
